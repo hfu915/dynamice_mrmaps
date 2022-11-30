@@ -122,162 +122,157 @@ runCountry_rcpp <- function (
     # generate contact matrices for DynaMICE using uniform age structure
     # adjust contact reciprocity by population structure of each year
     if (contact_mat == "unimix") {
-
       beta_full <- beta_tstep * beta_full_unadj
 
-      } else if (contact_mat == "prpmix") {
+    } else if (contact_mat == "prpmix") {
+      beta_full <- beta_tstep * matrix (rep(pop.vector_full/sum(pop.vector_full), each = 254), nrow = 254)
 
-        beta_full <- beta_tstep * matrix (rep(pop.vector_full/sum(pop.vector_full), each = 254), nrow = 254)
+    } else {
+      beta_full <- matrix(0, 254, 254)
+      beta_full_R0 <- matrix(0, 254, 254)
+      for (i in 1:254){
+        for (j in 1:254) {
+          beta_full [i, j] <- (beta_full_unadj[i, j] * pop.vector_full[i] +
+                                 beta_full_unadj[j, i] * pop.vector_full[j])/(2*pop.vector_full[i])
 
-      } else {
-
-        beta_full <- matrix(0, 254, 254)
-        beta_full_R0 <- matrix(0, 254, 254)
-        for (i in 1:254){
-          for (j in 1:254) {
-            beta_full [i, j] <- (beta_full_unadj[i, j] * pop.vector_full[i] +
-                                   beta_full_unadj[j, i] * pop.vector_full[j])/(2*pop.vector_full[i])
-
-            # calculate infection rate of the contact matrix based on the R0 definition
-            # transform from "contactees per contactor" to "contactors per contactee"
-            # This step can be skipped, since the largest eigenvalue remains unchanged.
-            beta_full_R0 [i, j] <-  beta_full [i, j] * (pop.vector_full[i] / pop.vector_full[j])
-          }
+          # calculate infection rate of the contact matrix based on the R0 definition
+          # transform from "contactees per contactor" to "contactors per contactee"
+          # This step can be skipped, since the largest eigenvalue remains unchanged.
+          beta_full_R0 [i, j] <-  beta_full [i, j] * (pop.vector_full[i] / pop.vector_full[j])
         }
+      }
         # make sure the contact matrix to represent target R0
-        beta_full <- (beta_tstep / Re(eigen(beta_full_R0, only.values=T)$values[1])) * beta_full
-      }
+      beta_full <- (beta_tstep / Re(eigen(beta_full_R0, only.values=T)$values[1])) * beta_full
+    }
 
-      # run spin-up period
-      if (y == years[1]){
-        outp <- rcpp_spinup_maps (init_Comp, parms_rcpp, beta_full, pop.vector_full, spinup_yr)
-        out_Comp <- outp$out_Comp
-
-      if (vaccination >= 1) {
-
-        # Maximum coverage can (obviously) only be 100%
-        # To estimate proportion that is vaccinated at each week, we first calculate the number of individuals remaining susceptible
-        # Then we calculate the number of individuals that should be vaccinated each week, in order to remain 1 - coverage susceptibles at the end of the timeliness data
-        # In essence, this becomes the inverse of the cumulative timeliness curve
-        cycov <- c_coverage_routine [year == y & vaccine == "MCV1", coverage]
-
-        # Not use the following adjustment for coverage, as it leads to reduced coverage estimates
-        # cycov <- c_coverage_routine [year == y & vaccine == "MCV1", coverage] /
-        #   c_timeliness [is.na(age), prop_final_cov]
-
-        if (length(cycov) == 0) {   # check if vaccine is not yet introduced and thereby, coverage value missing for this year
-          cycov <- 0
-        } else if (is.na(cycov)) {
-          cycov <- 0
-        }
-
-        country_year_timeliness_mcv1 <- 1 - min(cycov,1) * country_timeliness
-
-        country_year_timeliness_mcv1 <- -diff(country_year_timeliness_mcv1) /
-          (country_year_timeliness_mcv1 [1:(length(country_year_timeliness_mcv1)-1)])
-
-        # Timeliness is reported by week in the first year, and by month in the second year. Assume there is no vaccination in between
-        country_year_timeliness_mcv1 [is.na(country_year_timeliness_mcv1)] <- 0
-        country_year_timeliness_mcv1 [is.nan(country_year_timeliness_mcv1)] <- 0
-        country_year_timeliness_mcv1_allages <- rep(0, 254)
-        country_year_timeliness_mcv1_allages [round(timeliness_ages)] <- country_year_timeliness_mcv1
-
-      } else {
-        country_year_timeliness_mcv1_allages <- rep(0, 254)
-      }
-
-      if(vaccination == 2){
-        country_year_mcv2 <- c_coverage_routine [year == y & vaccine == "MCV2", coverage]
-      } else {
-        country_year_mcv2 <- 0
-      }
-
-      if ( is.na(country_year_mcv2) || length (country_year_mcv2) == 0 ) {
-        country_year_mcv2 <- 0
-      }
-
-      # SIA inputs
-      if ((using_sia == 1) & (nrow (c_coverage_sia) > 0)) {
-
-        setorder (c_coverage_sia, country_code, year, strategy)
-        sia_targetpop <- tolower (stringr::str_sub (c_coverage_sia [year == y, strategy], 1, 1))
-        sia_targetpop <- which (letters %in% sia_targetpop) # convert to numbers
-        # sia_targetpop <- ifelse (sia_targetpop == "C" | sia_targetpop == "F", 0,
-        #                          ifelse (sia_targetpop == "D", 1, 2))
-        sia_input <- list (
-          sia_rounds = length(sia_targetpop),
-          a0 = c_coverage_sia [year == y, a0],
-          a1 = c_coverage_sia [year == y, a1],
-          siacov = c_coverage_sia [year == y, coverage],
-          poptype = as.integer(sia_targetpop)
-        )
-      } else {
-        sia_input <- list (
-          sia_rounds = 0,
-          a0 = integer(0),
-          a1 = integer(0),
-          siacov = numeric(0),
-          poptype = integer(0)
-        )
-      }
-
-      # run main period
-      t_start <- spinup_yr*tstep + (y-years[1])*tstep + 1
-      outp <- rcpp_vaccine_oney_maps (out_Comp,
-                                      parms_rcpp,
-                                      sia_input,
-                                      beta_full,
-                                      pop.vector_full,
-                                      country_year_timeliness_mcv1_allages,
-                                      country_year_mcv2,
-                                      t_start)
+    # run spin-up period
+    if (y == years[1]) {
+      outp <- rcpp_spinup_maps (init_Comp, parms_rcpp, beta_full, pop.vector_full, spinup_yr)
       out_Comp <- outp$out_Comp
+    }
 
+    if (vaccination >= 1) {
+      # Maximum coverage can (obviously) only be 100%
+      # To estimate proportion that is vaccinated at each week, we first calculate the number of individuals remaining susceptible
+      # Then we calculate the number of individuals that should be vaccinated each week, in order to remain 1 - coverage susceptibles at the end of the timeliness data
+      # In essence, this becomes the inverse of the cumulative timeliness curve
+      cycov <- c_coverage_routine [year == y & vaccine == "MCV1", coverage]
 
-      if (length (which (out_Comp < 0)) > 0) {
-        print (paste0 ("age group: ", which (out_Comp < 0, arr.ind = T)[,1]))
-        print (paste0 ("state: ", which (out_Comp < 0, arr.ind = T)[,2]))
-               }
+      # Not use the following adjustment for coverage, as it leads to reduced coverage estimates
+      # cycov <- c_coverage_routine [year == y & vaccine == "MCV1", coverage] /
+      #   c_timeliness [is.na(age), prop_final_cov]
 
-      case_out       [, (y-years[1])+1] <- outp$cases*pop.vector_full        # new infections adding to I, V1I, V2I, V3I
-      case0d_out     [, (y-years[1])+1] <- outp$cases0d*pop.vector_full      # new infections adding to I
-      pop_out        [, (y-years[1])+1] <- rowSums(out_Comp[, 1:13])*pop.vector_full  # all compartments
-      popS_out       [, (y-years[1])+1] <- rowSums(out_Comp[, c(2, 5, 8, 11)])*pop.vector_full
-      popS0d_out     [, (y-years[1])+1] <- out_Comp[, 2]*pop.vector_full
-      popS1d_out     [, (y-years[1])+1] <- out_Comp[, 5]*pop.vector_full
-      popR_out       [, (y-years[1])+1] <- rowSums(out_Comp[, c(4, 7, 10, 13)])*pop.vector_full
-      doseRI1_out    [, (y-years[1])+1] <- outp$doseRI1*pop.vector_full
-      doseRI2_out    [, (y-years[1])+1] <- outp$doseRI2*pop.vector_full
-      doseSIAc_out   [, (y-years[1])+1] <- outp$doseSIAc*pop.vector_full
-      doseSIAde1_out [, (y-years[1])+1] <- outp$doseSIAde1*pop.vector_full
-      doseSIAde2_out [, (y-years[1])+1] <- outp$doseSIAde2*pop.vector_full
-      doseSIAf_out   [, (y-years[1])+1] <- outp$doseSIAf*pop.vector_full
-      imm1pop_out    [, (y-years[1])+1] <- rowSums(out_Comp[, 5:7])*pop.vector_full
-      imm2pop_out    [, (y-years[1])+1] <- rowSums(out_Comp[, 8:13])*pop.vector_full
+      if (length(cycov) == 0) {   # check if vaccine is not yet introduced and thereby, coverage value missing for this year
+        cycov <- 0
+      } else if (is.na(cycov)) {
+        cycov <- 0
+      }
 
-      #if(y %% 20 == 0) {print (paste0 ('year ', y, ' finished'))}
+      country_year_timeliness_mcv1 <- 1 - min(cycov,1) * country_timeliness
+      country_year_timeliness_mcv1 <- -diff(country_year_timeliness_mcv1) /
+        (country_year_timeliness_mcv1 [1:(length(country_year_timeliness_mcv1)-1)])
+
+      # Timeliness is reported by week in the first year, and by month in the second year. Assume there is no vaccination in between
+      country_year_timeliness_mcv1 [is.na(country_year_timeliness_mcv1)] <- 0
+      country_year_timeliness_mcv1 [is.nan(country_year_timeliness_mcv1)] <- 0
+      country_year_timeliness_mcv1_allages <- rep(0, 254)
+      country_year_timeliness_mcv1_allages [round(timeliness_ages)] <- country_year_timeliness_mcv1
+
+    } else {
+      country_year_timeliness_mcv1_allages <- rep(0, 254)
+    }
+
+    if(vaccination == 2) {
+      country_year_mcv2 <- c_coverage_routine [year == y & vaccine == "MCV2", coverage]
+    } else {
+      country_year_mcv2 <- 0
+    }
+
+    if ( is.na(country_year_mcv2) || length (country_year_mcv2) == 0 ) {
+      country_year_mcv2 <- 0
+    }
+
+    # SIA inputs
+    if ((using_sia == 1) & (nrow (c_coverage_sia) > 0)) {
+
+      setorder (c_coverage_sia, country_code, year, strategy)
+      sia_targetpop <- tolower (stringr::str_sub (c_coverage_sia [year == y, strategy], 1, 1))
+      sia_targetpop <- which (letters %in% sia_targetpop) # convert to numbers
+      # sia_targetpop <- ifelse (sia_targetpop == "C" | sia_targetpop == "F", 0,
+      #                          ifelse (sia_targetpop == "D", 1, 2))
+      sia_input <- list (
+        sia_rounds = length(sia_targetpop),
+        a0 = c_coverage_sia [year == y, a0],
+        a1 = c_coverage_sia [year == y, a1],
+        siacov = c_coverage_sia [year == y, coverage],
+        poptype = as.integer(sia_targetpop)
+      )
+    } else {
+      sia_input <- list (
+        sia_rounds = 0,
+        a0 = integer(0),
+        a1 = integer(0),
+        siacov = numeric(0),
+        poptype = integer(0)
+      )
+    }
+
+    # run main period
+    t_start <- spinup_yr*tstep + (y-years[1])*tstep + 1
+    outp <- rcpp_vaccine_oney_maps (out_Comp,
+                                    parms_rcpp,
+                                    sia_input,
+                                    beta_full,
+                                    pop.vector_full,
+                                    country_year_timeliness_mcv1_allages,
+                                    country_year_mcv2,
+                                    t_start)
+    out_Comp <- outp$out_Comp
+
+    if (length (which (out_Comp < 0)) > 0) {
+      print (paste0 ("age group: ", which (out_Comp < 0, arr.ind = T)[,1]))
+      print (paste0 ("state: ", which (out_Comp < 0, arr.ind = T)[,2]))
+    }
+
+    case_out       [, (y-years[1])+1] <- outp$cases*pop.vector_full        # new infections adding to I, V1I, V2I, V3I
+    case0d_out     [, (y-years[1])+1] <- outp$cases0d*pop.vector_full      # new infections adding to I
+    pop_out        [, (y-years[1])+1] <- rowSums(out_Comp[, 1:13])*pop.vector_full  # all compartments
+    popS_out       [, (y-years[1])+1] <- rowSums(out_Comp[, c(2, 5, 8, 11)])*pop.vector_full
+    popS0d_out     [, (y-years[1])+1] <- out_Comp[, 2]*pop.vector_full
+    popS1d_out     [, (y-years[1])+1] <- out_Comp[, 5]*pop.vector_full
+    popR_out       [, (y-years[1])+1] <- rowSums(out_Comp[, c(4, 7, 10, 13)])*pop.vector_full
+    doseRI1_out    [, (y-years[1])+1] <- outp$doseRI1*pop.vector_full
+    doseRI2_out    [, (y-years[1])+1] <- outp$doseRI2*pop.vector_full
+    doseSIAc_out   [, (y-years[1])+1] <- outp$doseSIAc*pop.vector_full
+    doseSIAde1_out [, (y-years[1])+1] <- outp$doseSIAde1*pop.vector_full
+    doseSIAde2_out [, (y-years[1])+1] <- outp$doseSIAde2*pop.vector_full
+    doseSIAf_out   [, (y-years[1])+1] <- outp$doseSIAf*pop.vector_full
+    imm1pop_out    [, (y-years[1])+1] <- rowSums(out_Comp[, 5:7])*pop.vector_full
+    imm2pop_out    [, (y-years[1])+1] <- rowSums(out_Comp[, 8:13])*pop.vector_full
+
+    #if(y %% 20 == 0) {print (paste0 ('year ', y, ' finished'))}
   }
 
-    writelog ("log", paste0 (iso3,"; Finished model run"))
+  writelog ("log", paste0 (iso3,"; Finished model run"))
 
-    saveRDS (list(cases      = rbind (colSums(      case_out[1:52,]), colSums(      case_out[53:104,]), colSums(      case_out[105:156,]),       case_out[157:254,]),
-                  cases0d    = rbind (colSums(    case0d_out[1:52,]), colSums(    case0d_out[53:104,]), colSums(    case0d_out[105:156,]),     case0d_out[157:254,]),
-                  pops       = rbind (colSums(       pop_out[1:52,]), colSums(       pop_out[53:104,]), colSums(       pop_out[105:156,]),        pop_out[157:254,]),
-                  popSus     = rbind (colSums(      popS_out[1:52,]), colSums(      popS_out[53:104,]), colSums(      popS_out[105:156,]),       popS_out[157:254,]),
-                  popSus0d   = rbind (colSums(    popS0d_out[1:52,]), colSums(    popS0d_out[53:104,]), colSums(    popS0d_out[105:156,]),     popS0d_out[157:254,]),
-                  popSus1d   = rbind (colSums(    popS1d_out[1:52,]), colSums(    popS1d_out[53:104,]), colSums(    popS1d_out[105:156,]),     popS1d_out[157:254,]),
-                  popRec     = rbind (colSums(      popR_out[1:52,]), colSums(      popR_out[53:104,]), colSums(      popR_out[105:156,]),       popR_out[157:254,]),
-                  doseRI1    = rbind (colSums(   doseRI1_out[1:52,]), colSums(   doseRI1_out[53:104,]), colSums(   doseRI1_out[105:156,]),    doseRI1_out[157:254,]),
-                  doseRI2    = rbind (colSums(   doseRI2_out[1:52,]), colSums(   doseRI2_out[53:104,]), colSums(   doseRI2_out[105:156,]),    doseRI2_out[157:254,]),
-                  doseSIAc   = rbind (colSums(  doseSIAc_out[1:52,]), colSums(  doseSIAc_out[53:104,]), colSums(  doseSIAc_out[105:156,]),   doseSIAc_out[157:254,]),
-                  doseSIAde1 = rbind (colSums(doseSIAde1_out[1:52,]), colSums(doseSIAde1_out[53:104,]), colSums(doseSIAde1_out[105:156,]), doseSIAde1_out[157:254,]),
-                  doseSIAde2 = rbind (colSums(doseSIAde2_out[1:52,]), colSums(doseSIAde2_out[53:104,]), colSums(doseSIAde2_out[105:156,]), doseSIAde2_out[157:254,]),
-                  doseSIAf   = rbind (colSums(  doseSIAf_out[1:52,]), colSums(  doseSIAf_out[53:104,]), colSums(  doseSIAf_out[105:156,]),   doseSIAf_out[157:254,]),
-                  imm1pop    = rbind (colSums(   imm1pop_out[1:52,]), colSums(   imm1pop_out[53:104,]), colSums(   imm1pop_out[105:156,]),    imm1pop_out[157:254,]),
-                  imm2pop    = rbind (colSums(   imm2pop_out[1:52,]), colSums(   imm2pop_out[53:104,]), colSums(   imm2pop_out[105:156,]),    imm2pop_out[157:254,])),
-             file = paste0 ("outcome/", save_scenario, "/", foldername, "/", iso3, ".RDS")
-             )
-  }
+  saveRDS (list (cases      = rbind (colSums(      case_out[1:52,]), colSums(      case_out[53:104,]), colSums(      case_out[105:156,]),       case_out[157:254,]),
+                 cases0d    = rbind (colSums(    case0d_out[1:52,]), colSums(    case0d_out[53:104,]), colSums(    case0d_out[105:156,]),     case0d_out[157:254,]),
+                 pops       = rbind (colSums(       pop_out[1:52,]), colSums(       pop_out[53:104,]), colSums(       pop_out[105:156,]),        pop_out[157:254,]),
+                 popSus     = rbind (colSums(      popS_out[1:52,]), colSums(      popS_out[53:104,]), colSums(      popS_out[105:156,]),       popS_out[157:254,]),
+                 popSus0d   = rbind (colSums(    popS0d_out[1:52,]), colSums(    popS0d_out[53:104,]), colSums(    popS0d_out[105:156,]),     popS0d_out[157:254,]),
+                 popSus1d   = rbind (colSums(    popS1d_out[1:52,]), colSums(    popS1d_out[53:104,]), colSums(    popS1d_out[105:156,]),     popS1d_out[157:254,]),
+                 popRec     = rbind (colSums(      popR_out[1:52,]), colSums(      popR_out[53:104,]), colSums(      popR_out[105:156,]),       popR_out[157:254,]),
+                 doseRI1    = rbind (colSums(   doseRI1_out[1:52,]), colSums(   doseRI1_out[53:104,]), colSums(   doseRI1_out[105:156,]),    doseRI1_out[157:254,]),
+                 doseRI2    = rbind (colSums(   doseRI2_out[1:52,]), colSums(   doseRI2_out[53:104,]), colSums(   doseRI2_out[105:156,]),    doseRI2_out[157:254,]),
+                 doseSIAc   = rbind (colSums(  doseSIAc_out[1:52,]), colSums(  doseSIAc_out[53:104,]), colSums(  doseSIAc_out[105:156,]),   doseSIAc_out[157:254,]),
+                 doseSIAde1 = rbind (colSums(doseSIAde1_out[1:52,]), colSums(doseSIAde1_out[53:104,]), colSums(doseSIAde1_out[105:156,]), doseSIAde1_out[157:254,]),
+                 doseSIAde2 = rbind (colSums(doseSIAde2_out[1:52,]), colSums(doseSIAde2_out[53:104,]), colSums(doseSIAde2_out[105:156,]), doseSIAde2_out[157:254,]),
+                 doseSIAf   = rbind (colSums(  doseSIAf_out[1:52,]), colSums(  doseSIAf_out[53:104,]), colSums(  doseSIAf_out[105:156,]),   doseSIAf_out[157:254,]),
+                 imm1pop    = rbind (colSums(   imm1pop_out[1:52,]), colSums(   imm1pop_out[53:104,]), colSums(   imm1pop_out[105:156,]),    imm1pop_out[157:254,]),
+                 imm2pop    = rbind (colSums(   imm2pop_out[1:52,]), colSums(   imm2pop_out[53:104,]), colSums(   imm2pop_out[105:156,]),    imm2pop_out[157:254,])),
+            file = paste0 ("outcome/", save_scenario, "/", foldername, "/", iso3, ".RDS")
+          )
+
 }
 # end of function -- runCountry_rcpp
 # ------------------------------------------------------------------------------
