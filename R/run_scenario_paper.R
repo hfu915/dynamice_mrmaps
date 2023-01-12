@@ -1,6 +1,6 @@
 # run_scenario_paper
 # execute dynaMICE model for MR-MAPs scenarios
-# update: 2022/11/24
+# update: 2023/01/10
 
 rm(list = ls())
 
@@ -64,7 +64,7 @@ for (index in 1:length(vaccine_strategies)){
   # output the summary csv file
   # estimate deaths and DALYs by Portnoy's CFR methods
   output_burden_estimate (save_scenario          = sprintf ("scenario%02d", index),
-                          foldername             = paste0 ("20221124", "_v2_s1_deter"),
+                          foldername             = paste0 ("20230110", "_v2_s1_deter"),
                           sim_years              = 1980:2040,
                           cfr_option             = "Portnoy",
                           burden_estimate_file   = burden_estimate_file,

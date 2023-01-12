@@ -1,7 +1,7 @@
 # run_map-price_paper.R
 # find country-specific thresholds for MR-MAP price
 # modified from output_results_paper.R
-# update: 2022/11/29
+# update: 2023/01/10
 
 library(data.table)
 library(stringr)
@@ -50,7 +50,7 @@ for (scname in scns){
                       scn_case [country %in% anl_countries & year %in% 2030:2040])
 }
 annual_burden <- file_case [, lapply(.SD, sum),
-                            .SDcols = cases:doseSIAf,
+                            .SDcols = cases:doseSIAf2,
                             by = c("country", "year", "comp")]
 
 # get MCV1 & MCV2 coverages and their incremental changes compared to 2020
@@ -115,18 +115,21 @@ dat_anal [, `:=` (inc_cost_del_RI1 = (inc_covMCV1/0.01)*((cov2020_MCV1 < 0.8)*co
                     floor(inc_covMCV2/0.05)*cost_inc_del_RI_per*cost_del_RI)]
 
 # calculate costs except for MAP procurement costs
+# no difference between the delivery costs for N&Ss and MAPs
 dat_anal [, `:=` (all_cost_tx = cases*cost_tx,
                   all_cost_vac_syr = (1-maps_pnt)*((doseRI1+doseRI2)*cost_syr_RI +
-                                                     doseSIAc*cost_syr_SIA),
+                                                   (doseSIAc1+doseSIAc2)*cost_syr_SIA),
                   all_cost_del_syr = (1-maps_pnt)*(doseRI1*(cost_del_RI+inc_cost_del_RI1) +
-                                                     doseRI2*(cost_del_RI+inc_cost_del_RI2) +
-                                                     doseSIAc*cost_del_SIA),
+                                                   doseRI2*(cost_del_RI+inc_cost_del_RI2) +
+                                                   (doseSIAc1+doseSIAc2)*cost_del_SIA),
                   all_cost_del_maps = maps_pnt*doseRI1*(cost_del_RI+inc_cost_del_RI1) +
-                                      doseSIAde1*(cost_del_RI+inc_cost_del_RI1) +
+                                            doseSIAde1*(cost_del_RI+inc_cost_del_RI1) +
                                       maps_pnt*doseRI2*(cost_del_RI+inc_cost_del_RI2) +
-                                      doseSIAde2*(cost_del_RI+inc_cost_del_RI2) +
-                                      (maps_pnt*doseSIAc+doseSIAf)*cost_del_SIA,
-                  all_dose_maps = maps_pnt*(doseRI1+doseRI2+doseSIAc) + (doseSIAde1+doseSIAde2+doseSIAf))]
+                                            doseSIAde2*(cost_del_RI+inc_cost_del_RI2) +
+                                      maps_pnt*(doseSIAc1+doseSIAc2)*cost_del_SIA +
+                                               (doseSIAf1+doseSIAf2)*cost_del_SIA,
+                  all_dose_maps = maps_pnt*(doseRI1+doseRI2+doseSIAc1+doseSIAc2) +
+                                  (doseSIAde1+doseSIAde2+doseSIAf1+doseSIAf2))]
 dat_anal_full <- copy (dat_anal)
 
 # add income-level data for analysis
@@ -229,14 +232,15 @@ dat_mapsprice [is.na(country_name)]
 dat_mapsprice [!is.na(country_name) & !is.na(maps_price),
                .(min_price = min(maps_price), max_price = max(maps_price), med_price = median(maps_price)),
                by = .(comp, income_g)]
-table (dat_mapsprice [!is.na(country_name) & is.na(maps_price), .(income_g, comp)])
+table (dat_mapsprice [!is.na(country_name) & !is.na(maps_price), .(income_g, comp)])
 dat_mapsprice [!is.na(country_name) & is.na(maps_price)]
 
-# check countries have no net health benefits even if MR-MAPs procurement is free
+# check countries have no net health benefits even if MR-MAPs procurement is at zero price
 ce_neg_ctry <- unique (dat_mapsprice [is.na(maps_price), country])
+# AGO BGD BRA CHN CIV COM EGY LSO MMR ROU RUS SRB STP SWZ SYR TUR UKR VNM WSM
 total_burden <- annual_burden [, .(total_case = sum(cases)), by = .(country, comp)]
 ave_burden <- total_burden [, .(mean_case = mean(total_case)), by = .(country)]
-sum (ave_burden [country %in% ce_neg_ctry, mean_case]) / sum (ave_burden [, mean_case]) # 6.3% of cases between 2030-2040
+sum (ave_burden [country %in% ce_neg_ctry, mean_case]) / sum (ave_burden [, mean_case]) # 7.7% of cases between 2030-2040
 sum (dat_input [comp == "high-base" & country_code %in% ce_neg_ctry, sumcase_17to19]) /
   sum (dat_input [comp == "high-base", sumcase_17to19]) # 18% of 2017-2019 reported cases
 

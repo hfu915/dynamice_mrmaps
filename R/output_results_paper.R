@@ -1,7 +1,7 @@
 # output_results_paper.R
 # get tables and figures for the paper
 # include both health impact and cost-effectiveness analysis
-# update: 2022/11/29
+# update: 2023/01/03
 
 
 library(data.table)
@@ -80,7 +80,7 @@ for (scname in scns){
                       scn_case [country %in% anl_countries & year %in% 2030:2040])
 }
 annual_burden <- file_case [, lapply(.SD, sum),
-                            .SDcols = cases:doseSIAf,
+                            .SDcols = cases:doseSIAf2,
                             by = c("country", "year", "comp")]
 
 # get MCV1 & MCV2 coverages and their incremental changes compared to 2020
@@ -154,24 +154,24 @@ get_cost_del <- function (
     diff_del_maps_RI = 0,  # difference in delivery cost for MR-MAPs compared to N&Ss (RI)
     diff_del_maps_SIA = 0  # difference in delivery cost for MR-MAPs compared to N&Ss (SIA)
 ){
-  dat_anal [, `:=` (total_doses = doseRI1 + doseRI2 +
-                      doseSIAc + doseSIAde1 + doseSIAde2 + doseSIAf,
+  dat_anal [, `:=` (total_doses = doseRI1+doseRI2 + doseSIAc1+doseSIAc2 +
+                      doseSIAde1+doseSIAde2 + doseSIAf1+doseSIAf2,
                     all_cost_tx = cases*cost_tx,
                     all_cost_vac_syr = (1-maps_pnt)*((doseRI1+doseRI2)*cost_syr_RI +
-                                                       doseSIAc*cost_syr_SIA),
+                                                       (doseSIAc1+doseSIAc2)*cost_syr_SIA),
                     all_cost_del_syr = (1-maps_pnt)*(doseRI1*(cost_del_RI+inc_cost_del_RI1) +
                                                        doseRI2*(cost_del_RI+inc_cost_del_RI2) +
-                                                       doseSIAc*cost_del_SIA),
-                    all_cost_vac_maps_lb = maps_pnt*(doseRI1+doseRI2+doseSIAc)*cost_map_lb +
-                      (doseSIAde1+doseSIAde2+doseSIAf)*cost_map_lb,
-                    all_cost_vac_maps_ub = maps_pnt*(doseRI1+doseRI2+doseSIAc)*cost_map_ub +
-                      (doseSIAde1+doseSIAde2+doseSIAf)*cost_map_ub,
+                                                       (doseSIAc1+doseSIAc2)*cost_del_SIA),
+                    all_cost_vac_maps_lb = maps_pnt*(doseRI1+doseRI2+doseSIAc1+doseSIAc2)*cost_map_lb +
+                      (doseSIAde1+doseSIAde2+doseSIAf1+doseSIAf2)*cost_map_lb,
+                    all_cost_vac_maps_ub = maps_pnt*(doseRI1+doseRI2+doseSIAc1+doseSIAc2)*cost_map_ub +
+                      (doseSIAde1+doseSIAde2+doseSIAf1+doseSIAf2)*cost_map_ub,
                     all_cost_del_maps = ((maps_pnt*doseRI1*(cost_del_RI+inc_cost_del_RI1+diff_del_maps_RI) +
                                             doseSIAde1*(cost_del_RI+inc_cost_del_RI1+diff_del_maps_RI) +
                                             maps_pnt*doseRI2*(cost_del_RI+inc_cost_del_RI2+diff_del_maps_RI) +
                                             doseSIAde2*(cost_del_RI+inc_cost_del_RI2+diff_del_maps_RI) +
-                                            maps_pnt*doseSIAc*(cost_del_SIA+diff_del_maps_SIA) +
-                                            doseSIAf*(cost_del_SIA+diff_del_maps_SIA))*rel_del_maps))]
+                                            maps_pnt*(doseSIAc1+doseSIAc2)*(cost_del_SIA+diff_del_maps_SIA) +
+                                            (doseSIAf1+doseSIAf2)*(cost_del_SIA+diff_del_maps_SIA))*rel_del_maps))]
   dat_anal [, `:=` (total_costs_lb = all_cost_tx +
                       all_cost_vac_syr + all_cost_del_syr +
                       all_cost_vac_maps_lb + all_cost_del_maps,
@@ -302,47 +302,66 @@ blankPlot <- ggplot() + geom_blank(aes(1,1)) +
 
 
 # ------------------------------------------------------------------------------
-# Fig 1: coverage for delivery strategies in DRC
+# Fig 1: coverage for delivery strategies in a selected country
 # ------------------------------------------------------------------------------
-file_cov_COD <- NULL
-for (scname in scns){
-  input_scn_cov <-  rbind (fread (paste0 ("vac_coverage_maps/routine_",
-                                          scname, ".csv")) [country_code == "COD" & year >= 2020,
-                                                            c("strategy", "country_code", "year", "coverage")],
-                           fread (paste0 ("vac_coverage_maps/sia_",
-                                          scname, ".csv")) [country_code == "COD" & year >= 2020,
-                                                            c("strategy", "country_code", "year", "coverage")])
-  file_cov_COD <- rbind (file_cov_COD, input_scn_cov [, comp := scname])
+sel_cols_f1 <- c("strategy", "country_code",  "country", "year", "coverage")
+plot_cov_ctry <- function (sel_ctry, show_ctry_name = TRUE){
+  file_cov_ctry <- NULL
+  for (scname in scns){
+    input_scn_cov <-  rbind (fread (paste0 ("vac_coverage_maps/routine_",
+                                            scname, ".csv")) [country_code == sel_ctry & year >= 2020, ..sel_cols_f1],
+                             fread (paste0 ("vac_coverage_maps/sia_",
+                                            scname, ".csv")) [country_code == sel_ctry & year >= 2020, ..sel_cols_f1])
+    file_cov_ctry <- rbind (file_cov_ctry, input_scn_cov [, comp := scname])
+  }
+  file_cov_ctry <- file_cov_ctry [dat_input [country_code == sel_ctry, c("comp", "ini_yr")],
+                                on = .(comp)]
+
+  # add an empty row for strategy C to generate the panel
+  if (length(file_cov_ctry [year %in% 2030:2040 & str_sub(strategy,1,1) == "C", coverage]) == 0){
+    file_cov_ctry <- rbind (file_cov_ctry,
+                            copy(file_cov_ctry[year == 2040 &
+                                                 str_sub(strategy,1,1) == "A"])[, `:=`(strategy = strategy_names[3],
+                                                                                       coverage = NA)])
+  }
+  file_cov_ctry [, year := as.numeric(year)]
+
+  file_cov_ctry [comp %in% scns[1:3] & str_sub(strategy,1,1) %in% c("D","E","F"), year := year - 0.15]
+  file_cov_ctry [comp %in% scns[4:6] & str_sub(strategy,1,1) %in% c("D","E","F"), year := year + 0.15]
+  file_cov_ctry [, `:=` (scenario = factor (comp, levels = scns, labels = plot_scn_names),
+                         strategy = factor (str_sub(strategy,1,1), levels = c("A","B","C","D","E","F"),
+                                            labels = strategy_names))]
+
+  # use coverage among target population (instead of general population)
+  file_cov_ctry [, adj_cov := coverage]
+  file_cov_ctry [str_sub(strategy,1,1) %in% c("D","E"), adj_cov := 0.2]
+  file_cov_ctry [str_sub(strategy,1,1) == "F", adj_cov := 0.1]
+
+  plot_f1_cov <- ggplot (data = file_cov_ctry) +
+    geom_vline (aes(xintercept = ini_yr, colour = scenario),
+                size = 0.75, linetype = 2, show.legend = F) +
+    geom_point (aes (x = year, y = adj_cov, colour = scenario, size = scenario)) +
+    ylim (0,1) + xlim (2019.5,2040.5) +
+    facet_wrap (vars(strategy), ncol = 2, dir = "v") +
+    scale_colour_manual ("Scenario", values = plot_colours) +
+    scale_size_manual (" ", values = c(rep(c(2.9,1.9,0.8),2))) +
+    labs (x = "Year", y = "Coverage",
+          title = ifelse (show_ctry_name, file_cov_ctry$country[1], " ")) +
+    guides (colour = guide_legend (nrow = 3),
+            size = guide_none()) +
+    theme_bw () +
+    theme (legend.position = "bottom")
+  return (plot_f1_cov)
 }
-file_cov_COD <- file_cov_COD [dat_input [country_code == "COD", c("comp", "ini_yr")],
-                              on = .(comp)]
-file_cov_COD [, year := as.numeric(year)]
-file_cov_COD [comp %in% scns[1:3] & str_sub(strategy,1,1) %in% c("D","E","F"), year := year - 0.15]
-file_cov_COD [comp %in% scns[4:6] & str_sub(strategy,1,1) %in% c("D","E","F"), year := year + 0.15]
-file_cov_COD [, `:=` (scenario = factor (comp, levels = scns, labels = plot_scn_names),
-                      strategy = factor (strategy, labels = strategy_names))]
 
-# use coverage among target population
-file_cov_COD [, adj_cov := coverage]
-file_cov_COD [str_sub(strategy,1,1) %in% c("D","E"), adj_cov := 0.2]
-file_cov_COD [str_sub(strategy,1,1) == "F", adj_cov := 0.1]
-
-plt_cov_COD <- ggplot (data = file_cov_COD) +
-  geom_vline (aes(xintercept = ini_yr, colour = scenario),
-              size = 0.75, linetype = 2, show.legend = F) +
-  geom_point (aes (x = year, y = adj_cov, colour = scenario, size = scenario)) +
-  ylim (0,1) + xlim (2019.5,2040.5) +
-  facet_wrap (vars(strategy), ncol = 2, dir = "v") +
-  scale_colour_manual ("Scenario", values = plot_colours) +
-  scale_size_manual (" ", values = c(rep(c(2.6,2,1),2))) +
-  labs (x = "Year", y = "Coverage") +
-  guides (colour = guide_legend (nrow = 3),
-          size = guide_none()) +
-  theme_bw () +
-  theme (legend.position = "bottom")
-ggsave ("outputs/paper_fig_cov-COD.pdf", plt_cov_COD,
+ggsave ("outputs/paper_fig_cov-COD.pdf", plot_cov_ctry ("COD", FALSE),
         height = 15, width = 17, units = "cm" )
 
+pdf ("outputs/paper_fig_cov-all.pdf", height = 6, width = 8)
+for (plt_ctry in anl_countries) {
+  print (plot_cov_ctry (plt_ctry, TRUE))
+}
+dev.off()
 
 # ------------------------------------------------------------------------------
 ## Table 3 -  absolute and relative averted burden
@@ -357,7 +376,7 @@ dat_cea_low  [country %in% c(income_names, "Global"),
 dat_cea_high [avt_cases < 0] # MLI/Sequential & Accelerated
 dat_cea_low  [avt_cases < 0] # AGO/Sequential
 
-dat_cea_high [avt_dalys < 0] # MLI/Sequential
+dat_cea_high [avt_dalys < 0] # MLI/Accelerated
 # Note that MLI/Accelerated have negative cases but positive DALYs averted
 # a large outbreak would be delayed to occur and mean age of infection would increase
 
@@ -369,6 +388,11 @@ pltdata_cumburden <- dat_all [country_name %in% income_names, comp:dalys]
 pltdata_cumburden <- pltdata_cumburden [, lapply (.SD, sum),
                                         .SDcols = cases:dalys,
                                         by = c("comp", "income_g")]
+# burden size reported in the manuscript text
+pltdata_cumburden [, .(sum_cases = sum(cases),
+                       sum_deaths = sum(deaths),
+                       sum_dalys = sum(dalys)), by = "comp"]
+
 pltdata_cumburden <- setDT (pivot_longer (pltdata_cumburden, cols = cases:dalys,
                                           names_to = "measure", values_to = "value"))
 pltdata_cumburden [, `:=` (comp = factor (comp, levels = scns, labels = plot_scn_names),
@@ -388,6 +412,7 @@ plt_cumburden <- ggplot(data = pltdata_cumburden,
          axis.text.x = element_blank (),
          axis.ticks.x = element_blank (),
          axis.title.y = element_text (size = 13, margin = margin (r = 10)))
+
 ggsave("outputs/paper_fig_cumburden-overview.pdf", plt_cumburden,
        height = 6, width = 10)
 
@@ -476,6 +501,7 @@ plt_decomp_inccost <- function (in_data, sel_covassum, sel_title, sel_lgdpos){
            legend.text = element_text (size = 9.5)) +
     guides (fill = guide_legend (nrow = 2, byrow = T))
 }
+
 ggsave ("outputs/paper_fig_inccost-breakdown.pdf",
         ggarrange (plt_decomp_inccost (dat_all, "Higher", "", "none"),
                    plt_decomp_inccost (dat_all, "Lower", "", c(0.45, -0.6)),
@@ -565,6 +591,9 @@ pltdata_icers_income [, `:=` (map_price = factor (map_price, levels = c("lb", "u
                               discount = factor (discount, levels = c("equal", "differential"),
                                                  labels = c("Equal discounting", "Differential discounting")))]
 setorder (pltdata_icers_income, discount, country, scenario, map_price)
+
+pltdata_icers_income [, .(icer_lb = min(icer), icer_ub = max(icer)), by = "country"]
+
 plot_icer_income <- function (sel_discount, lgd_pos){
   ggplot (pltdata_icers_income [discount == sel_discount],
           aes(x = scenario, y = icer, colour = scenario)) +
@@ -641,3 +670,42 @@ ggsave ("outputs/paper_fig_nhb.pdf",
                    heights = c(3,3,1), ncol = 1),
         height = 7, width = 10)
 
+
+# ------------------------------------------------------------------------------
+## Fig C - MR-MAPs dose delivery to zero-dose and already-vaccinated children
+# ------------------------------------------------------------------------------
+pltdat_mapdose <- dat_anal [year %in% 2030:2040,
+                            .(mapdoseSIA1 = sum(doseSIAde1, doseSIAf1),
+                              mapdoseSIA2 = sum(doseSIAde2, doseSIAf2)),
+                            by = .(income_g, year, comp)]
+pltdat_mapdose <- pltdat_mapdose [comp %in% scns[c(2,3,5,6)]]
+pltdat_mapdose [, `:=` (cum_mapdose1 = cumsum(mapdoseSIA1),
+                        cum_mapdose2 = cumsum(mapdoseSIA2)), by = list(income_g, comp)]
+pltdat_mapdose <- setDT (pivot_longer (pltdat_mapdose,
+                                       cols = cum_mapdose1:cum_mapdose2,
+                                       names_to = "pop_vac",
+                                       values_to = "cum_mapdose"))
+
+pltdat_mapdose [, `:=` (covassum = ifelse (comp %in% scns[c(2,3)], "Higher", "Lower"),
+                        intro_plan = ifelse (comp %in% scns[c(2,5)], "Sequential", "Accelerated"),
+                        scenario = factor (comp, levels = scns, labels = plot_scn_names))]
+plot_mapdose <- function (sel_covassum, sel_lgdpos, sel_ytitle){
+  ggplot (pltdat_mapdose [covassum == sel_covassum]) +
+    facet_grid (rows = vars(income_g), cols = vars(intro_plan), scales = "free_y") +
+    geom_bar (mapping = aes(x = year, y = cum_mapdose/1e6, fill = pop_vac),
+              stat = "identity", position = position_fill (reverse = TRUE), width = 0.8) +
+    labs (x = "Year", y = "Number of MR-MAP doses (millions)",
+          title = paste0 (sel_covassum, " coverage projection")) +
+    scale_fill_manual ("Predicted vaccination state of population reached",
+                       values = c("#42b540", "#00468b", "#ed0000")) +
+    theme_bw () +
+    theme (legend.position = sel_lgdpos,
+           legend.direction = "horizontal",
+           panel.grid.major = element_blank(),
+           panel.grid.minor = element_blank(),
+           plot.margin = unit (c(0.25, 0.25, 0.1, 0.25), "cm"),
+           strip.text.x = element_text (size = 10),
+           axis.text.x = element_blank(),
+           legend.text = element_text (size = 10),
+           legend.background = element_blank())
+}

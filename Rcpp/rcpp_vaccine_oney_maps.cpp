@@ -13,7 +13,7 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 	// =================================================
 	// Set-up (index, parameters)
 	// =================================================
-	int i_M = 0;    // Maternal Immune
+	int i_M = 0;    // Maternal immune
 	int i_S = 1;    // Susceptible
 	int i_I = 2;    // Infectious
 	int i_R = 3;    // Recovered
@@ -37,12 +37,12 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 	NumericVector newinfect0d(254);      // new zero-dose infections/cases, 254 age groups
 	NumericVector newdoseRI1(254);       // MCV1 doses administrated through routine immunisation, 254 age groups
 	NumericVector newdoseRI2(254);       // MCV2 doses administrated through routine immunisation, 254 age groups
-	NumericVector newdoseSIAc(254);      // SIA doses administrated through campaign with strategy C, 254 age groups
-	NumericVector newdoseSIAde1(254);    // SIA doses administrated through strategy D & E to zero-dose, 254 age groups
-	NumericVector newdoseSIAde2(254);    // SIA doses administrated through strategy D & E to already-vaccinated, 254 age groups
-	NumericVector newdoseSIAf(254);      // SIA doses administrated through campaign strategy F, 254 age groups
-	//NumericVector newdoseSIA1(254);      // SIA doses administrated to zero-dose population, 254 age groups
-	//NumericVector newdoseSIA2(254);      // SIA doses administrated to already-vaccinated population, 254 age groups
+	NumericVector newdoseSIAc1(254);     // SIA doses administrated through campaign with strategy C to zero-dose, 254 age groups
+	NumericVector newdoseSIAc2(254);     // SIA doses administrated through campaign with strategy C to already-vaccinated, 254 age groups
+	NumericVector newdoseSIAde1(254);    // SIA doses administrated through strategies D & E to zero-dose, 254 age groups
+	NumericVector newdoseSIAde2(254);    // SIA doses administrated through strategies D & E to already-vaccinated, 254 age groups
+	NumericVector newdoseSIAf1(254);     // SIA doses administrated through campaign with strategy F to zero-dose, 254 age groups
+	NumericVector newdoseSIAf2(254);     // SIA doses administrated through campaign with strategy F to already-vaccinated, 254 age groups
 	
 	double tcycle = 0.0;                 // seasonality
 	double lambda = 0.0;                 // force of infection
@@ -156,22 +156,8 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 				//if (t == (t_start + tstep/2)) {Rcout << "MCV2 coverage: " << cov2 << " -> " << adjcov2 << ", MCV1 = " << surcov1 << ", % vaccinated: " << p_vaced << "\n";}
 				}
 
-				
 				// MCV doses administrated				
-				newdoseRI1[71] += age_w*surcov1*(trans_Comp(71-1,i_M)
-											   + trans_Comp(71-1,i_S)
-											   + trans_Comp(71-1,i_I)
-											   + trans_Comp(71-1,i_R));
-				newdoseRI2[71] += age_w*cov2*p_allpop;  // include surplus MCV2 that are wastaged
-				//newdoseRI2[71] += age_w*adjcov2*(trans_Comp(71-1,i_V1S)
-				//					           + trans_Comp(71-1,i_V1I)
-				//	                           + trans_Comp(71-1,i_V1R) 
-				//				               + trans_Comp(71-1,i_V2S)
-				//					           + trans_Comp(71-1,i_V2I)
-				//					           + trans_Comp(71-1,i_V2R)
-				//							   + trans_Comp(71-1,i_V3S)
-				//					           + trans_Comp(71-1,i_V3I)
-				//					           + trans_Comp(71-1,i_V3R));
+				newdoseRI2[71] += age_w*cov2*p_allpop;  // include surplus MCV2 doses 
 				
 				// ageing process and routine vaccination: 72 weeks old
 				out_Comp(71,i_M)   = trans_Comp(71,i_M)
@@ -317,8 +303,6 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
                 out_Comp(a,i_V3S) = trans_Comp(a,i_V3S) - age_w*trans_Comp(a,i_V3S) + age_w*trans_Comp(a-1,i_V3S);
                 out_Comp(a,i_V3I) = trans_Comp(a,i_V3I) - age_w*trans_Comp(a,i_V3I) + age_w*trans_Comp(a-1,i_V3I);
                 out_Comp(a,i_V3R) = trans_Comp(a,i_V3R) - age_w*trans_Comp(a,i_V3R) + age_w*trans_Comp(a-1,i_V3R);
-
-			//Rcout << a+1 << " ";
 			}
 		}
 
@@ -331,6 +315,7 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 			pop_fert_R += (out_Comp(a,i_R) + out_Comp(a,i_V1R) + out_Comp(a,i_V2R) + out_Comp(a,i_V3R))*pop_full[a];
 		}
 		prp_R = pop_fert_R/pop_fert_SR;  // Proportion of being born with maternal immunity
+		
 		//Rcout << "Proportion of immune = " << prp_R*100 << "%%\n";
 
 		out_Comp(0,i_M)   = trans_Comp(0,i_M)   - age_w*trans_Comp(0,i_M)   + age_w*prp_R;
@@ -380,24 +365,7 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 					// Rcout << "populations: " << pop_0dose << " (zero-dose) " << pop_vaced << " (vaccinated)\n";
 		
 					if (poptype == 3 || poptype == 6)  // Strategy C (regular) or F (one-time off)
-					{
-						/*
-						// SIA coverage in zero-dose and already-vaccinated populations
-						double siacov_0dose = exp(-2.621733 + 5.238249*siacov)/(1.0 + exp(-2.621733 + 5.238249*siacov)); // estimated SIA coverage among zero-dose children
-						double siadose_0dose = siacov_0dose*pop_0dose;  // number of zero-dose population receiving SIA
-		
-						if (siadose < siadose_0dose)
-						{
-							siacov1 = siadose/pop_0dose;
-							siacov2 = 0.0;
-						}
-						else
-						{
-							siacov1 = siacov_0dose;
-							siacov2 = (siadose - siadose_0dose)/pop_vaced;
-						}
-						*/
-						
+					{						
 						// SIA distribution based on the assumption of 7.7% never reached
 						double pr_0dose = pop_0dose/(pop_0dose + pop_vaced);  // proportion of zero-dose population
 						
@@ -422,7 +390,7 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 					}
 					else
 					{
-						if (poptype == 4)  // Strategy D (hard-to-reach, first-dose)
+						if (poptype == 4)  // Strategy D (HTR & MOV, first-dose)
 						{
 							if (siadose <= pop_0dose)
 							{
@@ -433,8 +401,8 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 								siacov1 = 1.0;
 								siacov2 = (siadose-pop_0dose)/pop_vaced;
 							}
-
-						} else            // Strategy E (hard-to-reach, second-dose)
+						} 
+						else              // Strategy E (HTR & MOV, second-dose)
 						{
 							if (siadose <= pop_vaced)
 							{
@@ -456,56 +424,42 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 					double n_eff = 0.0, n_v1 = 0.0, p_eff = 0.0, ve2 = 0.0;  // initialise for later calculations
 
 					// MCV doses administrated
-					//newdoseSIA1[a] += siacov1*(in_Comp(a,i_M)
-					//						+ in_Comp(a,i_S)
-					//						+ in_Comp(a,i_I)
-					//						+ in_Comp(a,i_R));
-					//newdoseSIA2[a] += siacov2*(in_Comp(a,i_V1S)
-					//						+ in_Comp(a,i_V1I)
-					//						+ in_Comp(a,i_V1R)
-					//						+ in_Comp(a,i_V2S)
-					//						+ in_Comp(a,i_V2I)
-					//						+ in_Comp(a,i_V2R)
-					//						+ in_Comp(a,i_V3S)
-					//						+ in_Comp(a,i_V3I)
-					//						+ in_Comp(a,i_V3R));
-					
 				    if (poptype == 3)
 				    {
-				    	newdoseSIAc[a] += siacov1*(in_Comp(a,i_M)
-				    					 		 + in_Comp(a,i_S)
-				    							 + in_Comp(a,i_I)
-				    							 + in_Comp(a,i_R))
-				    				    + siacov2*(in_Comp(a,i_V1S)
-				    							 + in_Comp(a,i_V1I)
-				    							 + in_Comp(a,i_V1R)
-				    							 + in_Comp(a,i_V2S)
-				    					 		 + in_Comp(a,i_V2I)
-				    							 + in_Comp(a,i_V2R)
-												 + in_Comp(a,i_V3S)
-												 + in_Comp(a,i_V3I)
-												 + in_Comp(a,i_V3R));
+				    	newdoseSIAc1[a] += siacov1*(in_Comp(a,i_M)
+				    					 		  + in_Comp(a,i_S)
+				    							  + in_Comp(a,i_I)
+				    							  + in_Comp(a,i_R));
+				    	newdoseSIAc2[a] += siacov2*(in_Comp(a,i_V1S)
+				    							  + in_Comp(a,i_V1I)
+				    							  + in_Comp(a,i_V1R)
+				    							  + in_Comp(a,i_V2S)
+				    					 		  + in_Comp(a,i_V2I)
+				    							  + in_Comp(a,i_V2R)
+												  + in_Comp(a,i_V3S)
+												  + in_Comp(a,i_V3I)
+												  + in_Comp(a,i_V3R));
 						/*if (a == 52){
-							Rcout << "Number of SIA dose C, one year old: " << newdoseSIAc[a] << "\n";
+							Rcout << "Number of SIA dose C, one year old: " << newdoseSIAc1[a] + newdoseSIAc2[a]<< "\n";
 						}*/	
 				    }			
 				    else
-				    {
-				    	if (poptype == 6) 
+				    {   
+				        if (poptype == 6) 
 						{
-							newdoseSIAf[a] += siacov1*(in_Comp(a,i_M)
-													 + in_Comp(a,i_S)
-													 + in_Comp(a,i_I)
-													 + in_Comp(a,i_R))
-				    					    + siacov2*(in_Comp(a,i_V1S)
-													 + in_Comp(a,i_V1I)
-													 + in_Comp(a,i_V1R)
-													 + in_Comp(a,i_V2S)
-													 + in_Comp(a,i_V2I)
-													 + in_Comp(a,i_V2R)
-													 + in_Comp(a,i_V3S)
-													 + in_Comp(a,i_V3I)
-													 + in_Comp(a,i_V3R));
+							newdoseSIAf1[a] += siacov1*(in_Comp(a,i_M)
+													  + in_Comp(a,i_S)
+													  + in_Comp(a,i_I)
+													  + in_Comp(a,i_R));
+				    		newdoseSIAf2[a] += siacov2*(in_Comp(a,i_V1S)
+													  + in_Comp(a,i_V1I)
+													  + in_Comp(a,i_V1R)
+													  + in_Comp(a,i_V2S)
+													  + in_Comp(a,i_V2I)
+													  + in_Comp(a,i_V2R)
+													  + in_Comp(a,i_V3S)
+													  + in_Comp(a,i_V3I)
+													  + in_Comp(a,i_V3R));
 						} 
 						else 
 						{ // poptype == 4 or poptype == 5
@@ -523,11 +477,7 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 													   + in_Comp(a,i_V3I)
 													   + in_Comp(a,i_V3R));
 						}
-						/*if (a == 52){
-							Rcout << "Number of SIA dose DEF, one year old: " << newdoseSIAdef[a] << "\n";
-						}*/
 				    }
-					//Rcout << "age:" << a+1 << ", doseSIA:" << newdoseSIA[a] << "\n ";
 					
 					out_Comp(a,i_M)     = in_Comp(a,i_M)
 										- in_Comp(a,i_M)*siacov1;
@@ -586,7 +536,7 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 										+ in_Comp(a,i_V1S)*siacov2*ve2
 										+ in_Comp(a,i_V1R)*siacov2;
 	
-					double ve3 = ve2;  // assume 3+ dose efficacy (0.0 or equal to ve2)
+					double ve3 = ve2;  // assume 3+ dose efficacy equal to ve2
 					out_Comp(a,i_V3S)   = in_Comp(a,i_V3S)
 					                    - in_Comp(a,i_V3S)*siacov2
 										+ in_Comp(a,i_V3S)*siacov2*(1.0-ve3)
@@ -610,13 +560,13 @@ List rcpp_vaccine_oney_maps(NumericMatrix in_Comp, List parm, List siaparm, Nume
 	outp["cases0d"] = newinfect0d;
 	outp["doseRI1"] = newdoseRI1;
 	outp["doseRI2"] = newdoseRI2;
-	outp["doseSIAc"] = newdoseSIAc;
+	outp["doseSIAc1"] = newdoseSIAc1;
+	outp["doseSIAc2"] = newdoseSIAc2;
 	outp["doseSIAde1"] = newdoseSIAde1;
 	outp["doseSIAde2"] = newdoseSIAde2;
-	outp["doseSIAf"] = newdoseSIAf;
-	//outp["doseSIA1"] = newdoseSIA1;
-	//outp["doseSIA2"] = newdoseSIA2;
-    outp["out_Comp"] = in_Comp;
+	outp["doseSIAf1"] = newdoseSIAf1;
+	outp["doseSIAf2"] = newdoseSIAf2;
+	outp["out_Comp"] = in_Comp;
 	
 	return outp;
 }

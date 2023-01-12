@@ -83,21 +83,23 @@ runCountry_rcpp <- function (
   n_years        <- length(years)
 
   #y_out          <- array(0, c(254, 14, n_years))   # numbers of age groups, compartments, years
-  case_out       <- array(0, c(254, n_years))
-  case0d_out     <- array(0, c(254, n_years))
-  pop_out        <- array(0, c(254, n_years))
-  popS_out       <- array(0, c(254, n_years))
-  popS0d_out     <- array(0, c(254, n_years))
-  popS1d_out     <- array(0, c(254, n_years))
-  popR_out       <- array(0, c(254, n_years))
-  doseRI1_out    <- array(0, c(254, n_years))
-  doseRI2_out    <- array(0, c(254, n_years))
-  doseSIAc_out   <- array(0, c(254, n_years))
-  doseSIAde1_out <- array(0, c(254, n_years))
-  doseSIAde2_out <- array(0, c(254, n_years))
-  doseSIAf_out   <- array(0, c(254, n_years))
-  imm1pop_out    <- array(0, c(254, n_years))
-  imm2pop_out    <- array(0, c(254, n_years))
+  case_out        <- array(0, c(254, n_years))
+  case0d_out      <- array(0, c(254, n_years))
+  pop_out         <- array(0, c(254, n_years))
+  popS_out        <- array(0, c(254, n_years))
+  popS0d_out      <- array(0, c(254, n_years))
+  popS1d_out      <- array(0, c(254, n_years))
+  popR_out        <- array(0, c(254, n_years))
+  doseRI1_out     <- array(0, c(254, n_years))
+  doseRI2_out     <- array(0, c(254, n_years))
+  doseSIAc1_out   <- array(0, c(254, n_years))
+  doseSIAc2_out   <- array(0, c(254, n_years))
+  doseSIAde1_out  <- array(0, c(254, n_years))
+  doseSIAde2_out  <- array(0, c(254, n_years))
+  doseSIAf1_out   <- array(0, c(254, n_years))
+  doseSIAf2_out   <- array(0, c(254, n_years))
+  imm1pop_out     <- array(0, c(254, n_years))
+  imm2pop_out     <- array(0, c(254, n_years))
 
   init_Comp     <- matrix(0, 254, 14)
   init_Comp[,2] <- 0.95
@@ -234,42 +236,46 @@ runCountry_rcpp <- function (
       print (paste0 ("state: ", which (out_Comp < 0, arr.ind = T)[,2]))
     }
 
-    case_out       [, (y-years[1])+1] <- outp$cases*pop.vector_full        # new infections adding to I, V1I, V2I, V3I
-    case0d_out     [, (y-years[1])+1] <- outp$cases0d*pop.vector_full      # new infections adding to I
-    pop_out        [, (y-years[1])+1] <- rowSums(out_Comp[, 1:13])*pop.vector_full  # all compartments
-    popS_out       [, (y-years[1])+1] <- rowSums(out_Comp[, c(2, 5, 8, 11)])*pop.vector_full
-    popS0d_out     [, (y-years[1])+1] <- out_Comp[, 2]*pop.vector_full
-    popS1d_out     [, (y-years[1])+1] <- out_Comp[, 5]*pop.vector_full
-    popR_out       [, (y-years[1])+1] <- rowSums(out_Comp[, c(4, 7, 10, 13)])*pop.vector_full
-    doseRI1_out    [, (y-years[1])+1] <- outp$doseRI1*pop.vector_full
-    doseRI2_out    [, (y-years[1])+1] <- outp$doseRI2*pop.vector_full
-    doseSIAc_out   [, (y-years[1])+1] <- outp$doseSIAc*pop.vector_full
-    doseSIAde1_out [, (y-years[1])+1] <- outp$doseSIAde1*pop.vector_full
-    doseSIAde2_out [, (y-years[1])+1] <- outp$doseSIAde2*pop.vector_full
-    doseSIAf_out   [, (y-years[1])+1] <- outp$doseSIAf*pop.vector_full
-    imm1pop_out    [, (y-years[1])+1] <- rowSums(out_Comp[, 5:7])*pop.vector_full
-    imm2pop_out    [, (y-years[1])+1] <- rowSums(out_Comp[, 8:13])*pop.vector_full
+    case_out        [, (y-years[1])+1] <- outp$cases*pop.vector_full        # new infections adding to I, V1I, V2I, V3I
+    case0d_out      [, (y-years[1])+1] <- outp$cases0d*pop.vector_full      # new infections adding to I
+    pop_out         [, (y-years[1])+1] <- rowSums(out_Comp[, 1:13])*pop.vector_full  # all compartments
+    popS_out        [, (y-years[1])+1] <- rowSums(out_Comp[, c(2, 5, 8, 11)])*pop.vector_full
+    popS0d_out      [, (y-years[1])+1] <- out_Comp[, 2]*pop.vector_full
+    popS1d_out      [, (y-years[1])+1] <- out_Comp[, 5]*pop.vector_full
+    popR_out        [, (y-years[1])+1] <- rowSums(out_Comp[, c(4, 7, 10, 13)])*pop.vector_full
+    doseRI1_out     [, (y-years[1])+1] <- outp$doseRI1*pop.vector_full
+    doseRI2_out     [, (y-years[1])+1] <- outp$doseRI2*pop.vector_full
+    doseSIAc1_out   [, (y-years[1])+1] <- outp$doseSIAc1*pop.vector_full
+    doseSIAc2_out   [, (y-years[1])+1] <- outp$doseSIAc2*pop.vector_full
+    doseSIAde1_out  [, (y-years[1])+1] <- outp$doseSIAde1*pop.vector_full
+    doseSIAde2_out  [, (y-years[1])+1] <- outp$doseSIAde2*pop.vector_full
+    doseSIAf1_out   [, (y-years[1])+1] <- outp$doseSIAf1*pop.vector_full
+    doseSIAf2_out   [, (y-years[1])+1] <- outp$doseSIAf2*pop.vector_full
+    imm1pop_out     [, (y-years[1])+1] <- rowSums(out_Comp[, 5:7])*pop.vector_full
+    imm2pop_out     [, (y-years[1])+1] <- rowSums(out_Comp[, 8:13])*pop.vector_full
 
     #if(y %% 20 == 0) {print (paste0 ('year ', y, ' finished'))}
   }
 
   writelog ("log", paste0 (iso3,"; Finished model run"))
 
-  saveRDS (list (cases      = rbind (colSums(      case_out[1:52,]), colSums(      case_out[53:104,]), colSums(      case_out[105:156,]),       case_out[157:254,]),
-                 cases0d    = rbind (colSums(    case0d_out[1:52,]), colSums(    case0d_out[53:104,]), colSums(    case0d_out[105:156,]),     case0d_out[157:254,]),
-                 pops       = rbind (colSums(       pop_out[1:52,]), colSums(       pop_out[53:104,]), colSums(       pop_out[105:156,]),        pop_out[157:254,]),
-                 popSus     = rbind (colSums(      popS_out[1:52,]), colSums(      popS_out[53:104,]), colSums(      popS_out[105:156,]),       popS_out[157:254,]),
-                 popSus0d   = rbind (colSums(    popS0d_out[1:52,]), colSums(    popS0d_out[53:104,]), colSums(    popS0d_out[105:156,]),     popS0d_out[157:254,]),
-                 popSus1d   = rbind (colSums(    popS1d_out[1:52,]), colSums(    popS1d_out[53:104,]), colSums(    popS1d_out[105:156,]),     popS1d_out[157:254,]),
-                 popRec     = rbind (colSums(      popR_out[1:52,]), colSums(      popR_out[53:104,]), colSums(      popR_out[105:156,]),       popR_out[157:254,]),
-                 doseRI1    = rbind (colSums(   doseRI1_out[1:52,]), colSums(   doseRI1_out[53:104,]), colSums(   doseRI1_out[105:156,]),    doseRI1_out[157:254,]),
-                 doseRI2    = rbind (colSums(   doseRI2_out[1:52,]), colSums(   doseRI2_out[53:104,]), colSums(   doseRI2_out[105:156,]),    doseRI2_out[157:254,]),
-                 doseSIAc   = rbind (colSums(  doseSIAc_out[1:52,]), colSums(  doseSIAc_out[53:104,]), colSums(  doseSIAc_out[105:156,]),   doseSIAc_out[157:254,]),
-                 doseSIAde1 = rbind (colSums(doseSIAde1_out[1:52,]), colSums(doseSIAde1_out[53:104,]), colSums(doseSIAde1_out[105:156,]), doseSIAde1_out[157:254,]),
-                 doseSIAde2 = rbind (colSums(doseSIAde2_out[1:52,]), colSums(doseSIAde2_out[53:104,]), colSums(doseSIAde2_out[105:156,]), doseSIAde2_out[157:254,]),
-                 doseSIAf   = rbind (colSums(  doseSIAf_out[1:52,]), colSums(  doseSIAf_out[53:104,]), colSums(  doseSIAf_out[105:156,]),   doseSIAf_out[157:254,]),
-                 imm1pop    = rbind (colSums(   imm1pop_out[1:52,]), colSums(   imm1pop_out[53:104,]), colSums(   imm1pop_out[105:156,]),    imm1pop_out[157:254,]),
-                 imm2pop    = rbind (colSums(   imm2pop_out[1:52,]), colSums(   imm2pop_out[53:104,]), colSums(   imm2pop_out[105:156,]),    imm2pop_out[157:254,])),
+  saveRDS (list (cases       = rbind (colSums(      case_out[1:52,]), colSums(      case_out[53:104,]), colSums(      case_out[105:156,]),       case_out[157:254,]),
+                 cases0d     = rbind (colSums(    case0d_out[1:52,]), colSums(    case0d_out[53:104,]), colSums(    case0d_out[105:156,]),     case0d_out[157:254,]),
+                 pops        = rbind (colSums(       pop_out[1:52,]), colSums(       pop_out[53:104,]), colSums(       pop_out[105:156,]),        pop_out[157:254,]),
+                 popSus      = rbind (colSums(      popS_out[1:52,]), colSums(      popS_out[53:104,]), colSums(      popS_out[105:156,]),       popS_out[157:254,]),
+                 popSus0d    = rbind (colSums(    popS0d_out[1:52,]), colSums(    popS0d_out[53:104,]), colSums(    popS0d_out[105:156,]),     popS0d_out[157:254,]),
+                 popSus1d    = rbind (colSums(    popS1d_out[1:52,]), colSums(    popS1d_out[53:104,]), colSums(    popS1d_out[105:156,]),     popS1d_out[157:254,]),
+                 popRec      = rbind (colSums(      popR_out[1:52,]), colSums(      popR_out[53:104,]), colSums(      popR_out[105:156,]),       popR_out[157:254,]),
+                 doseRI1     = rbind (colSums(   doseRI1_out[1:52,]), colSums(   doseRI1_out[53:104,]), colSums(   doseRI1_out[105:156,]),    doseRI1_out[157:254,]),
+                 doseRI2     = rbind (colSums(   doseRI2_out[1:52,]), colSums(   doseRI2_out[53:104,]), colSums(   doseRI2_out[105:156,]),    doseRI2_out[157:254,]),
+                 doseSIAc1   = rbind (colSums( doseSIAc1_out[1:52,]), colSums( doseSIAc1_out[53:104,]), colSums( doseSIAc1_out[105:156,]),  doseSIAc1_out[157:254,]),
+                 doseSIAc2   = rbind (colSums( doseSIAc2_out[1:52,]), colSums( doseSIAc2_out[53:104,]), colSums( doseSIAc2_out[105:156,]),  doseSIAc2_out[157:254,]),
+                 doseSIAde1  = rbind (colSums(doseSIAde1_out[1:52,]), colSums(doseSIAde1_out[53:104,]), colSums(doseSIAde1_out[105:156,]), doseSIAde1_out[157:254,]),
+                 doseSIAde2  = rbind (colSums(doseSIAde2_out[1:52,]), colSums(doseSIAde2_out[53:104,]), colSums(doseSIAde2_out[105:156,]), doseSIAde2_out[157:254,]),
+                 doseSIAf1   = rbind (colSums( doseSIAf1_out[1:52,]), colSums( doseSIAf1_out[53:104,]), colSums( doseSIAf1_out[105:156,]),  doseSIAf1_out[157:254,]),
+                 doseSIAf2   = rbind (colSums( doseSIAf2_out[1:52,]), colSums( doseSIAf2_out[53:104,]), colSums( doseSIAf2_out[105:156,]),  doseSIAf2_out[157:254,]),
+                 imm1pop     = rbind (colSums(   imm1pop_out[1:52,]), colSums(   imm1pop_out[53:104,]), colSums(   imm1pop_out[105:156,]),    imm1pop_out[157:254,]),
+                 imm2pop     = rbind (colSums(   imm2pop_out[1:52,]), colSums(   imm2pop_out[53:104,]), colSums(   imm2pop_out[105:156,]),    imm2pop_out[157:254,])),
             file = paste0 ("outcome/", save_scenario, "/", foldername, "/", iso3, ".RDS")
           )
 
@@ -456,10 +462,12 @@ output_burden_estimate <- function (save_scenario,
                         popRec      = as.vector(res$popRec),
                         doseRI1     = as.vector(res$doseRI1),
                         doseRI2     = as.vector(res$doseRI2),
-                        doseSIAc    = as.vector(res$doseSIAc),
+                        doseSIAc1   = as.vector(res$doseSIAc1),
+                        doseSIAc2   = as.vector(res$doseSIAc2),
                         doseSIAde1  = as.vector(res$doseSIAde1),
                         doseSIAde2  = as.vector(res$doseSIAde2),
-                        doseSIAf    = as.vector(res$doseSIAf),
+                        doseSIAf1   = as.vector(res$doseSIAf1),
+                        doseSIAf2   = as.vector(res$doseSIAf2),
                         imm1pop     = as.vector(res$imm1pop),
                         imm2pop     = as.vector(res$imm2pop)
     )
@@ -473,8 +481,8 @@ output_burden_estimate <- function (save_scenario,
 
   cols_mea <- c("cases", "cases0d", "cohort_size",
                 "popSus", "popSus0d", "popSus1d", "popRec",
-                "doseRI1", "doseRI2", "doseSIAc",
-                "doseSIAde1", "doseSIAde2", "doseSIAf",
+                "doseRI1", "doseRI2", "doseSIAc1", "doseSIAc2",
+                "doseSIAde1", "doseSIAde2", "doseSIAf1", "doseSIAf2",
                 "imm1pop", "imm2pop")
 
   save.cols <- c("i.country", "year", "age", cols_mea, "value")
