@@ -1,8 +1,7 @@
-# output_results_paper.R
-# get tables and figures for the paper
+# output_results.R
+# get tables and figures for the manuscript
 # include both health impact and cost-effectiveness analysis
-# update: 2023/01/03
-
+# update: 2023/10/20
 
 library(data.table)
 library(stringr)
@@ -10,7 +9,6 @@ library(tidyr)
 library(ggplot2)
 library(ggpubr)
 library(ggrepel)
-library(ggbeeswarm)
 
 
 rm (list = ls())
@@ -271,12 +269,12 @@ dat_cea_low  <- get_avt_cea (dat_all [comp %in% scns[4:6]], scns[4], 0, 0, 2020)
 # ------------------------------------------------------------------------------
 # set up plotting elements
 # ------------------------------------------------------------------------------
-plot_scn_names <- c("Without MR-MAPs (higher cov)",
-                    "Sequential MR-MAPs intro (higher cov)",
-                    "Accelerated MR-MAPs intro (higher cov)",
-                    "Without MR-MAPs (lower cov)",
-                    "Sequential MR-MAPs intro (lower cov)",
-                    "Accelerated MR-MAPs intro (lower cov)")
+plot_scn_names <- c("Without MR-MAPs\n (higher coverage)",
+                    "Sequential MR-MAPs intro\n (higher coverage)",
+                    "Accelerated MR-MAPs intro\n (higher coverage)",
+                    "Without MR-MAPs\n (lower coverage)",
+                    "Sequential MR-MAPs intro\n (lower coverage)",
+                    "Accelerated MR-MAPs intro\n (lower coverage)")
 strategy_names <- c("A: Routine MCV1, Surviving children, 9m",
                     "B: Routine MCV2, Surviving children, 16.5m",
                     "C: Campaign SIA, Varying age groups",  # after 2030, all are 9-59m
@@ -339,7 +337,7 @@ plot_cov_ctry <- function (sel_ctry, show_ctry_name = TRUE){
 
   plot_f1_cov <- ggplot (data = file_cov_ctry) +
     geom_vline (aes(xintercept = ini_yr, colour = scenario),
-                size = 0.75, linetype = 2, show.legend = F) +
+                linewidth = 0.75, linetype = 2, show.legend = F) +
     geom_point (aes (x = year, y = adj_cov, colour = scenario, size = scenario)) +
     ylim (0,1) + xlim (2019.5,2040.5) +
     facet_wrap (vars(strategy), ncol = 2, dir = "v") +
@@ -350,18 +348,21 @@ plot_cov_ctry <- function (sel_ctry, show_ctry_name = TRUE){
     guides (colour = guide_legend (nrow = 3),
             size = guide_none()) +
     theme_bw () +
-    theme (legend.position = "bottom")
+    theme (legend.position = "bottom",
+           legend.text = element_text(size = 9),
+           legend.key.size = unit(0.85, 'cm'))
   return (plot_f1_cov)
 }
 
 ggsave ("outputs/paper_fig_cov-COD.pdf", plot_cov_ctry ("COD", FALSE),
-        height = 15, width = 17, units = "cm" )
+        height = 16, width = 17, units = "cm" )
 
-pdf ("outputs/paper_fig_cov-all.pdf", height = 6, width = 8)
+pdf ("outputs/paper_fig_cov-all.pdf", height = 6, width = 7)
 for (plt_ctry in anl_countries) {
   print (plot_cov_ctry (plt_ctry, TRUE))
 }
 dev.off()
+
 
 # ------------------------------------------------------------------------------
 ## Table 3 -  absolute and relative averted burden
@@ -405,7 +406,10 @@ plt_cumburden <- ggplot(data = pltdata_cumburden,
   scale_fill_manual ("Scenarios", values = plot_colours) +
   theme_bw () +
   labs (x = " ", y = "Burden estimates (millions)") +
+  guides (fill = guide_legend (byrow = TRUE)) +
   theme (legend.text = element_text (size = 10),
+         legend.spacing.y = unit (0.25, "cm"),
+         legend.key.size = unit (0.7, "cm"),
          strip.text.x = element_text (size = 11),
          strip.text.y = element_text (size = 11),
          plot.margin = unit (c(0.5, 0.5, 0.5, 0.5), "cm"),
@@ -414,7 +418,7 @@ plt_cumburden <- ggplot(data = pltdata_cumburden,
          axis.title.y = element_text (size = 13, margin = margin (r = 10)))
 
 ggsave("outputs/paper_fig_cumburden-overview.pdf", plt_cumburden,
-       height = 6, width = 10)
+       height = 6, width = 9)
 
 
 
@@ -505,7 +509,8 @@ plt_decomp_inccost <- function (in_data, sel_covassum, sel_title, sel_lgdpos){
 ggsave ("outputs/paper_fig_inccost-breakdown.pdf",
         ggarrange (plt_decomp_inccost (dat_all, "Higher", "", "none"),
                    plt_decomp_inccost (dat_all, "Lower", "", c(0.45, -0.6)),
-                   blankPlot, heights = c(3,3,1), nrow = 3),
+                   blankPlot, heights = c(3,3,1), nrow = 3,
+                   labels = c("A", "B", " "), label.x = 0.02, label.y = 0.95),
         height = 6.5, width = 10)
 
 
@@ -584,10 +589,10 @@ pltdata_icers_income <- copy (dat_cea_all_income)
 pltdata_icers_income [, `:=` (map_price = factor (map_price, levels = c("lb", "ub"),
                                                   labels = c("Lower price", "Upper price")),
                               scenario = factor (scenario, levels = scns[c(2,3,5,6)],
-                                                 labels = c("Higher cov /\n Sequential intro",
-                                                            "Higher cov /\n Accelerated intro",
-                                                            "Lower cov /\n Sequential intro",
-                                                            "Lower cov /\n Accelerated intro")),
+                                                 labels = c("Higher coverage /\n Sequential intro",
+                                                            "Higher coverage /\n Accelerated intro",
+                                                            "Lower coverage /\n Sequential intro",
+                                                            "Lower coverage /\n Accelerated intro")),
                               discount = factor (discount, levels = c("equal", "differential"),
                                                  labels = c("Equal discounting", "Differential discounting")))]
 setorder (pltdata_icers_income, discount, country, scenario, map_price)
@@ -607,18 +612,19 @@ plot_icer_income <- function (sel_discount, lgd_pos){
     theme (legend.position = lgd_pos,
            legend.direction = "horizontal",
            panel.grid.minor = element_blank(),
-           plot.margin = unit (c(0.1, 0.25, 0.35, 0.4), "cm"),
+           plot.margin = unit (c(0.2, 0.25, 0.35, 0.4), "cm"),
            strip.text.x = element_text (size = 12),
            strip.text.y = element_text (size = 12),
            axis.text.y = element_text (size = 10),
-           axis.text.x = element_text (size = 10, angle = 60, vjust = 0.625),
+           axis.text.x = element_text (size = 10, angle = 60, vjust = 0.55),
            legend.text = element_text (size = 10.5),
            legend.title = element_text (size = 10.5))
 }
 ggsave ("outputs/paper_fig_icer_income.pdf",
         ggarrange (plot_icer_income ("Equal discounting", "none"),
                    plot_icer_income ("Differential discounting", c(0.5, -0.8)),
-                   blankPlot, heights = c(3,3,0.3), nrow = 3),
+                   blankPlot, heights = c(3,3,0.3), nrow = 3,
+                   labels = c("A", "B", " "), label.x = 0.01, label.y = 0.993),
         height = 8, width = 10)
 
 
@@ -667,45 +673,7 @@ ggsave ("outputs/paper_fig_nhb.pdf",
         ggarrange (plot_country_nhb ("Higher", "none", "Net health benefits (millions)"),
                    plot_country_nhb ("Lower", c(0.5, -0.3), "Net health benefits (millions)"),
                    blankPlot,
-                   heights = c(3,3,1), ncol = 1),
+                   heights = c(3,3,1), ncol = 1,
+                   labels = c("A", "B", " "), label.x = 0.01, label.y = 0.99),
         height = 7, width = 10)
 
-
-# ------------------------------------------------------------------------------
-## Fig C - MR-MAPs dose delivery to zero-dose and already-vaccinated children
-# ------------------------------------------------------------------------------
-pltdat_mapdose <- dat_anal [year %in% 2030:2040,
-                            .(mapdoseSIA1 = sum(doseSIAde1, doseSIAf1),
-                              mapdoseSIA2 = sum(doseSIAde2, doseSIAf2)),
-                            by = .(income_g, year, comp)]
-pltdat_mapdose <- pltdat_mapdose [comp %in% scns[c(2,3,5,6)]]
-pltdat_mapdose [, `:=` (cum_mapdose1 = cumsum(mapdoseSIA1),
-                        cum_mapdose2 = cumsum(mapdoseSIA2)), by = list(income_g, comp)]
-pltdat_mapdose <- setDT (pivot_longer (pltdat_mapdose,
-                                       cols = cum_mapdose1:cum_mapdose2,
-                                       names_to = "pop_vac",
-                                       values_to = "cum_mapdose"))
-
-pltdat_mapdose [, `:=` (covassum = ifelse (comp %in% scns[c(2,3)], "Higher", "Lower"),
-                        intro_plan = ifelse (comp %in% scns[c(2,5)], "Sequential", "Accelerated"),
-                        scenario = factor (comp, levels = scns, labels = plot_scn_names))]
-plot_mapdose <- function (sel_covassum, sel_lgdpos, sel_ytitle){
-  ggplot (pltdat_mapdose [covassum == sel_covassum]) +
-    facet_grid (rows = vars(income_g), cols = vars(intro_plan), scales = "free_y") +
-    geom_bar (mapping = aes(x = year, y = cum_mapdose/1e6, fill = pop_vac),
-              stat = "identity", position = position_fill (reverse = TRUE), width = 0.8) +
-    labs (x = "Year", y = "Number of MR-MAP doses (millions)",
-          title = paste0 (sel_covassum, " coverage projection")) +
-    scale_fill_manual ("Predicted vaccination state of population reached",
-                       values = c("#42b540", "#00468b", "#ed0000")) +
-    theme_bw () +
-    theme (legend.position = sel_lgdpos,
-           legend.direction = "horizontal",
-           panel.grid.major = element_blank(),
-           panel.grid.minor = element_blank(),
-           plot.margin = unit (c(0.25, 0.25, 0.1, 0.25), "cm"),
-           strip.text.x = element_text (size = 10),
-           axis.text.x = element_blank(),
-           legend.text = element_text (size = 10),
-           legend.background = element_blank())
-}

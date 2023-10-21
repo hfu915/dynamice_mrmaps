@@ -1,5 +1,5 @@
-# run_scenario_paper
-# execute dynaMICE model for MR-MAPs scenarios
+# run_scenario.R
+# simulate MR-MAPs scenarios using DynaMICE
 # update: 2023/01/10
 
 rm(list = ls())

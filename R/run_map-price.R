@@ -1,6 +1,6 @@
-# run_map-price_paper.R
+# run_map-price.R
 # find country-specific thresholds for MR-MAP price
-# modified from output_results_paper.R
+# modified from output_results.R
 # update: 2023/01/10
 
 library(data.table)
