@@ -12,19 +12,18 @@ library(ggrepel)
 
 
 rm (list = ls())
-# # load input information:
-# # source("R/process_country_input_paper.R")
-# # (1) dat_input: MAP intro year, unit costs, coverage, reported cases, funding groups, WHO region, Gavi-eligibility
-# # (2) dat_oppcost_income: income-level health opportunity costs
-# # (3) dat_oppcost_ctry:  country-level health opportunity costs
-# # (4) data_pop: UNWPP 2019 population size by age and year
-# # (5) dat_income: country list by income group
+# load input information:
+# (1) data_input: MAP intro year, unit costs, coverage, reported cases, funding groups, WHO region, Gavi-eligibility
+# (2) data_oppcost_income: income-level health opportunity costs
+# (3) data_oppcost_ctry: country-level health opportunity costs
+# (4) data_pop: UNWPP 2019 population size by age and year
+# (5) data_income: country list by income group
 
-load (file = "inputs/dat_input.rds")
-load (file = "inputs/dat_oppcost_income.rds")
-load (file = "inputs/dat_oppcost_ctry.rds")
+load (file = "data/data_input.rds")
+load (file = "data/data_oppcost_income.rds")
+load (file = "data/data_oppcost_ctry.rds")
 load (file = "data/data_pop_maps.rda")
-load (file = "inputs/dat_income.rds")
+load (file = "data/data_income.rds")
 
 # ------------------------------------------------------------------------------
 ## exclude countries with small number of cases over 2027-2029
@@ -63,9 +62,9 @@ scns <- c("high-base",  # (1) without MR-MAPs (High)
           "low-base",   # (4) without MR-MAPs (Low)
           "low-maps",   # (5) with MR-MAPs (Low)
           "low-accl")   # (6) accelerated MR-MAP intro (Low)
-anl_countries <- setdiff (dat_income [income_g != "High income", country_code],
+anl_countries <- setdiff (data_income [income_g != "High income", country_code],
                           low_burden_ctries) # 67
-table (dat_income [country_code %in% anl_countries, income_g])
+table (data_income [country_code %in% anl_countries, income_g])
 # Low income          Lower middle income   Upper middle income
 # 20                  35                    15
 
@@ -127,7 +126,7 @@ annual_burden <-  annual_burden [file_cov,
                                  on = .(country = country_code,
                                         year = year,
                                         comp = scenario)]
-dat_anal <- annual_burden [dat_input [country_code %in% anl_countries],
+dat_anal <- annual_burden [data_input [country_code %in% anl_countries],
                            on = .(country = country_code, comp = comp)]
 setnames (x = dat_anal, old = "i.country", new = "country_name")
 
@@ -312,7 +311,7 @@ plot_cov_ctry <- function (sel_ctry, show_ctry_name = TRUE){
                                             scname, ".csv")) [country_code == sel_ctry & year >= 2020, ..sel_cols_f1])
     file_cov_ctry <- rbind (file_cov_ctry, input_scn_cov [, comp := scname])
   }
-  file_cov_ctry <- file_cov_ctry [dat_input [country_code == sel_ctry, c("comp", "ini_yr")],
+  file_cov_ctry <- file_cov_ctry [data_input [country_code == sel_ctry, c("comp", "ini_yr")],
                                 on = .(comp)]
 
   # add an empty row for strategy C to generate the panel
@@ -537,7 +536,7 @@ dat_cea_all_ctry <- copy (dat_cea_all [, c("covassum", "discount", "country",
                                            "country_name", "income_g", "scenario",
                                            "avt_dalys", "inc_cost_lb", "inc_cost_ub",
                                            "icer_lb", "icer_ub")]) [
-                                             dat_oppcost_ctry [, c("country_code", "oppcost")],
+                                             data_oppcost_ctry [, c("country_code", "oppcost")],
                                              on = .(country = country_code)]
 dat_cea_all_cost <- setDT (pivot_longer (dat_cea_all_ctry [, !c("icer_lb", "icer_ub", "avt_dalys",
                                                                 "income_g", "country_name", "oppcost")],
@@ -575,7 +574,7 @@ dat_cea_all_income <- setDT (pivot_longer (dat_cea_all_income [, !c("inc_cost_lb
                                            values_to = "icer",
                                            names_to = "map_price",
                                            names_pattern = "icer_(.*)"))
-dat_cea_all_income <- dat_cea_all_income [dat_oppcost_income[, c("income_g", "wt_oppcost")],
+dat_cea_all_income <- dat_cea_all_income [data_oppcost_income[, c("income_g", "wt_oppcost")],
                                           on = .(country = income_g)]
 dat_cea_all_income [, yes_ce := ifelse (icer <= wt_oppcost, 1, 0)]
 
@@ -606,7 +605,7 @@ plot_icer_income <- function (sel_discount, lgd_pos){
     scale_colour_manual ("Scenario", values = plot_colours[c(2,3,5,6)], guide = "none") +
     geom_jitter (aes (shape = map_price), size = 2, stroke = 0.9, width = 0.1) +
     scale_shape_manual ("MR-MAP price", values = c(1, 17)) +
-    geom_hline (aes(yintercept = wt_oppcost), colour = "grey60", linetype = 2, size = 0.8) +
+    geom_hline (aes(yintercept = wt_oppcost), colour = "grey60", linetype = 2, linewidth = 0.8) +
       labs (x = "", y = "Cost per DALY averted (USD)", title = sel_discount) +
     theme_bw () +
     theme (legend.position = lgd_pos,
@@ -651,7 +650,7 @@ plot_country_nhb <- function (sel_covassum, sel_lgdpos, sel_ytitle){
   ggplot(pltdat_nhb [covassum == sel_covassum],
          aes(x = scenario2, y = nhb/1e6, colour = intro)) +
     facet_wrap (vars(income_g), scales = "free") +
-    geom_hline (yintercept = 0, colour = "grey60", linetype = 2, size = 0.8) +
+    geom_hline (yintercept = 0, colour = "grey60", linetype = 2, linewidth = 0.8) +
     geom_jitter (aes (shape = map_price), size = 1.2,
                  stroke = 0.9, width = 0.2, alpha = 0.8) +
     scale_colour_manual ("Introduction strategy", values = plot_colours[c(2,3)],

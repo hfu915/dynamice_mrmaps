@@ -8,19 +8,18 @@ library(stringr)
 library(tidyr)
 
 rm (list = ls())
-# # load input information:
-# # source("R/process_country_input_paper.R")
-# # (1) dat_input: MAP intro year, unit costs, coverage, reported cases, funding groups, WHO region, Gavi-eligibility
-# # (2) dat_oppcost_income: income-level health opportunity costs
-# # (3) dat_oppcost_ctry:  country-level health opportunity costs
-# # (4) data_pop: UNWPP 2019 population size by age and year
-# # (5) dat_income: country list by income group
+# load input information:
+# (1) data_input: MAP intro year, unit costs, coverage, reported cases, funding groups, WHO region, Gavi-eligibility
+# (2) data_oppcost_income: income-level health opportunity costs
+# (3) data_oppcost_ctry: country-level health opportunity costs
+# (4) data_pop: UNWPP 2019 population size by age and year
+# (5) data_income: country list by income group
 
-load (file = "inputs/dat_input.rds")
-load (file = "inputs/dat_oppcost_income.rds")
-load (file = "inputs/dat_oppcost_ctry.rds")
+load (file = "data/data_input.rds")
+load (file = "data/data_oppcost_income.rds")
+load (file = "data/data_oppcost_ctry.rds")
 load (file = "data/data_pop_maps.rda")
-load (file = "inputs/dat_income.rds")
+load (file = "data/data_income.rds")
 
 
 # ------------------------------------------------------------------------------
@@ -38,8 +37,8 @@ income_names <- c("Low income", "Lower middle income", "Upper middle income")
 # exclude countries with low measles burden
 rm_ctries <- c("ALB", "BWA", "CPV", "DJI", "ERI", "FJI", "GEO", "GIN", "GNB", "JOR",
                "KAZ", "KGZ", "MAR", "MUS", "MYS", "RWA", "SSD", "THA", "TON", "VUT")
-anl_countries <- dat_income [!(income_g == "High income" | country_code %in% rm_ctries),
-                             country_code] # 70
+anl_countries <- data_income [!(income_g == "High income" | country_code %in% rm_ctries),
+                              country_code] # 70
 
 # number of cases between 2030-2040
 file_case  <- NULL
@@ -53,7 +52,7 @@ annual_burden <- file_case [, lapply(.SD, sum),
                             .SDcols = cases:doseSIAf2,
                             by = c("country", "year", "comp")]
 
-# get MCV1 & MCV2 coverages and their incremental changes compared to 2020
+# get MCV1 & MCV2 coverage and their incremental changes compared to 2020
 file_cov <- NULL
 sel_cols <- c("vaccine", "strategy", "country_code", "year", "coverage")
 for (scname in scns){
@@ -99,7 +98,7 @@ annual_burden <-  annual_burden [file_cov,
                                  on = .(country = country_code,
                                         year = year,
                                         comp = scenario)]
-dat_anal <- annual_burden [dat_input [country_code %in% anl_countries],
+dat_anal <- annual_burden [data_input [country_code %in% anl_countries],
                            on = .(country = country_code, comp = comp)]
 setnames (x = dat_anal, old = "i.country", new = "country_name")
 
@@ -187,8 +186,8 @@ dat_mapsprice [, `:=` (maps_price = as.numeric(NA), obj_diff = as.numeric(NA),
 # find the threshold prices
 for (ictry in unique (dat_anal$country)){
   c_icer_oppcost <- ifelse (ictry %in% anl_countries,
-                            dat_oppcost_ctry [country_code == ictry, oppcost],
-                            dat_oppcost_income [income_g == ictry, wt_oppcost])
+                            data_oppcost_ctry [country_code == ictry, oppcost],
+                            data_oppcost_income [income_g == ictry, wt_oppcost])
   for (iscn_base in scns[c(1,4)]){
     if (iscn_base == scns[1]){
       scns_to_eval <- scns[2:3]

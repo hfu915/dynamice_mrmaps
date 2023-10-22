@@ -16,11 +16,10 @@ sourceCpp ("Rcpp/rcpp_vaccine_oney_maps.cpp")
 load (file = "data/data_pop_maps.rda")
 load (file = "data/data_cfr_portnoy_maps.rda")
 load (file = "data/data_contact_syn_maps.rda")
-load (file = "data/data_r0_maps_paper.rda")     # assume fixed R0 by income group
+load (file = "data/data_r0_maps.rds")           # assume fixed R0 by income group
 load (file = "data/data_timeliness_maps.rda")   # assume perfect timeliness
 load (file = "data/data_lexp_remain_maps.rda")
-
-load (file = "inputs/dat_income.rds")           # input income data for 102 countries
+load (file = "data/data_income.rds")           # input income data for 102 countries
 
 # prepare functions
 source ("R/logs.R")
