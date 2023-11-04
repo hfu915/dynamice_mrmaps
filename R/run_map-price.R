@@ -102,7 +102,7 @@ dat_anal <- annual_burden [data_input [country_code %in% anl_countries],
                            on = .(country = country_code, comp = comp)]
 setnames (x = dat_anal, old = "i.country", new = "country_name")
 
-# adjust market penetration rate based on scenario and initialisation year
+# adjust market penetration rate based on scenario and introduction year
 dat_anal [year < ini_yr, maps_pnt := 0]
 
 # calculate incremental cost for RI
@@ -155,9 +155,10 @@ discrates <- 1/((1+0.03)^(c(2030:2040)-2020))
 
 # create a function to return ICER given different MR-MAP prices
 get_ICER_mapsprice <- function (iso3,
-                                scn_eval, # scenario for evaluation
-                                scn_base, # baseline scenario
-                                price_maps){
+                                scn_eval,   # scenario for evaluation
+                                scn_base,   # baseline scenario
+                                price_maps  # wastage-adjusted MR-MAP price (wastage rate = 1%)
+                                ){
 
   # calculate averted DALYs and incremental costs
   dat_ctry <- dat_anal [country == iso3 & comp %in% c(scn_eval, scn_base)]
@@ -234,12 +235,12 @@ dat_mapsprice [!is.na(country_name) & !is.na(maps_price),
 table (dat_mapsprice [!is.na(country_name) & !is.na(maps_price), .(income_g, comp)])
 dat_mapsprice [!is.na(country_name) & is.na(maps_price)]
 
-# check countries have no net health benefits even if MR-MAPs procurement is at zero price
+# check countries have no net health benefits even if MR-MAP procurement is at zero price
 ce_neg_ctry <- unique (dat_mapsprice [is.na(maps_price), country])
 # AGO BGD BRA CHN CIV COM EGY LSO MMR ROU RUS SRB STP SWZ SYR TUR UKR VNM WSM
 total_burden <- annual_burden [, .(total_case = sum(cases)), by = .(country, comp)]
 ave_burden <- total_burden [, .(mean_case = mean(total_case)), by = .(country)]
 sum (ave_burden [country %in% ce_neg_ctry, mean_case]) / sum (ave_burden [, mean_case]) # 7.7% of cases between 2030-2040
-sum (dat_input [comp == "high-base" & country_code %in% ce_neg_ctry, sumcase_17to19]) /
-  sum (dat_input [comp == "high-base", sumcase_17to19]) # 18% of 2017-2019 reported cases
+sum (data_input [comp == "high-base" & country_code %in% ce_neg_ctry, sumcase_17to19]) /
+  sum (data_input [comp == "high-base", sumcase_17to19]) # 18% of 2017-2019 reported cases
 

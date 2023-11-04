@@ -130,7 +130,7 @@ dat_anal <- annual_burden [data_input [country_code %in% anl_countries],
                            on = .(country = country_code, comp = comp)]
 setnames (x = dat_anal, old = "i.country", new = "country_name")
 
-# adjust market penetration rate based on scenario and initialisation year
+# adjust market penetration rate based on scenario and introduction year
 dat_anal [year < ini_yr, maps_pnt := 0]
 
 # calculate incremental cost for RI
@@ -269,14 +269,14 @@ dat_cea_low  <- get_avt_cea (dat_all [comp %in% scns[4:6]], scns[4], 0, 0, 2020)
 # set up plotting elements
 # ------------------------------------------------------------------------------
 plot_scn_names <- c("Without MR-MAPs\n (higher coverage)",
-                    "Sequential MR-MAPs intro\n (higher coverage)",
-                    "Accelerated MR-MAPs intro\n (higher coverage)",
+                    "Sequential intro\n (higher coverage)",
+                    "Accelerated intro\n (higher coverage)",
                     "Without MR-MAPs\n (lower coverage)",
-                    "Sequential MR-MAPs intro\n (lower coverage)",
-                    "Accelerated MR-MAPs intro\n (lower coverage)")
+                    "Sequential intro\n (lower coverage)",
+                    "Accelerated intro\n (lower coverage)")
 strategy_names <- c("A: Routine MCV1, Surviving children, 9m",
                     "B: Routine MCV2, Surviving children, 16.5m",
-                    "C: Campaign SIA, Varying age groups",  # after 2030, all are 9-59m
+                    "C: SIA, Varying age groups",  # after 2030, all are 9-59m
                     "D: Routine MCV1, HTR & MOV, 1-2y",
                     "E: Routine MCV2, HTR & MOV, 1-2y",
                     "F: One-time catch-up, HTR & MOV, 2-15y")
@@ -532,12 +532,11 @@ dat_cea_all <- rbind (copy (dat_cea_high_dcost [scenario != scns[1]])[, `:=` (co
                       copy (dat_cea_low_dcosteff [scenario != scns[4]])[, `:=` (covassum = "Lower", discount = "equal")])
 
 # country-level thresholds
-dat_cea_all_ctry <- copy (dat_cea_all [, c("covassum", "discount", "country",
-                                           "country_name", "income_g", "scenario",
-                                           "avt_dalys", "inc_cost_lb", "inc_cost_ub",
-                                           "icer_lb", "icer_ub")]) [
-                                             data_oppcost_ctry [, c("country_code", "oppcost")],
-                                             on = .(country = country_code)]
+dat_cea_all_ctry <- copy (data_oppcost_ctry [, c("country_code", "oppcost")]) [
+  dat_cea_all [, c("covassum", "discount", "country", "country_name", "income_g",
+                   "scenario", "avt_dalys", "inc_cost_lb", "inc_cost_ub",
+                   "icer_lb", "icer_ub")],
+  on = .(country_code = country)]
 dat_cea_all_cost <- setDT (pivot_longer (dat_cea_all_ctry [, !c("icer_lb", "icer_ub", "avt_dalys",
                                                                 "income_g", "country_name", "oppcost")],
                                          cols = inc_cost_lb:inc_cost_ub,
@@ -550,7 +549,7 @@ dat_cea_all_ctry <- setDT (pivot_longer (dat_cea_all_ctry [, !c("inc_cost_lb", "
                                          names_to = "map_price",
                                          names_pattern = "icer_(.*)"))
 dat_cea_all_ctry <- dat_cea_all_ctry [dat_cea_all_cost,
-                                      on = c("covassum", "discount", "country", "scenario", "map_price")]
+                                      on = c("covassum", "discount", "country_code", "scenario", "map_price")]
 dat_cea_all_ctry [,`:=` (yes_ce = ifelse (icer <= oppcost, 1, 0),
                          income_g = factor (income_g, levels = income_names),
                          scenario = factor (scenario, levels = scns[c(2,3,5,6)], labels = plot_scn_names[c(2,3,5,6)]))]
