@@ -1,7 +1,7 @@
 # output_results.R
 # get tables and figures for the manuscript
 # include both health impact and cost-effectiveness analysis
-# update: 2023/10/20
+# update: 2024/08/09
 
 library(data.table)
 library(stringr)
@@ -596,6 +596,15 @@ pltdata_icers_income [, `:=` (map_price = factor (map_price, levels = c("lb", "u
 setorder (pltdata_icers_income, discount, country, scenario, map_price)
 
 pltdata_icers_income [, .(icer_lb = min(icer), icer_ub = max(icer)), by = "country"]
+ #             country    icer_lb  icer_ub
+ #          Low income   10.57211 1846.441
+ # Lower middle income -108.09814 1100.733
+ # Upper middle income -133.66487 1205.791
+
+pltdata_icers_income [, .(icer_lb = min(icer), icer_ub = max(icer)), by = "map_price"]
+#   map_price    icer_lb   icer_ub
+# Lower price -133.66487  625.7684
+# Upper price   10.06505 1846.4414
 
 plot_icer_income <- function (sel_discount, lgd_pos){
   ggplot (pltdata_icers_income [discount == sel_discount],
